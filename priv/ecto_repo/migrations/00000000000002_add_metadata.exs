@@ -1,4 +1,4 @@
-defmodule FunWithFlags.Dev.EctoRepo.Migrations.AddTimestamps do
+defmodule FunWithFlags.Dev.EctoRepo.Migrations.AddMetadata do
   use Ecto.Migration
 
   # This migration assumes the default table name of "fun_with_flags_toggles"
@@ -7,8 +7,7 @@ defmodule FunWithFlags.Dev.EctoRepo.Migrations.AddTimestamps do
 
   def change do
     alter table(:fun_with_flags_toggles) do
-      add :inserted_at, :utc_datetime, null: false, default: fragment("CURRENT_TIMESTAMP")
-      add :updated_at, :utc_datetime, null: false, default: fragment("CURRENT_TIMESTAMP")
+      add :metadata, :map, null: true
     end
   end
 end

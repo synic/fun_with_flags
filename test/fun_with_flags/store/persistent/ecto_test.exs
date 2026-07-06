@@ -141,6 +141,30 @@ defmodule FunWithFlags.Store.Persistent.EctoTest do
       {:ok, %Flag{gates: [second_persisted]}} = PersiEcto.put(name, other_bool_gate)
       assert DateTime.compare(second_persisted.updated_at, first_persisted.updated_at) == :gt
     end
+
+
+    test "put() persists and reads back the gate metadata", %{name: name} do
+      gate = %Gate{type: :actor, for: "string:qwerty", enabled: true, metadata: %{"who" => "adam", "reason" => "launch"}}
+      {:ok, %Flag{gates: [persisted]}} = PersiEcto.put(name, gate)
+      assert persisted.metadata == %{"who" => "adam", "reason" => "launch"}
+    end
+
+
+    test "put() defaults the metadata to nil when none is supplied", %{name: name, gate: gate} do
+      {:ok, %Flag{gates: [persisted]}} = PersiEcto.put(name, gate)
+      assert persisted.metadata == nil
+    end
+
+
+    test "put() overwrites the metadata when upserting a gate", %{name: name} do
+      first_gate = %Gate{type: :boolean, enabled: true, metadata: %{"who" => "adam"}}
+      {:ok, %Flag{gates: [first_persisted]}} = PersiEcto.put(name, first_gate)
+      assert first_persisted.metadata == %{"who" => "adam"}
+
+      second_gate = %Gate{type: :boolean, enabled: false, metadata: %{"who" => "bob"}}
+      {:ok, %Flag{gates: [second_persisted]}} = PersiEcto.put(name, second_gate)
+      assert second_persisted.metadata == %{"who" => "bob"}
+    end
   end
 
 # -----------------
@@ -194,6 +218,29 @@ defmodule FunWithFlags.Store.Persistent.EctoTest do
 
       {:ok, result2} = PersiEcto.put(name, pot_gate)
       assert length(result2.gates) == 2
+    end
+
+
+    test "put() persists and overwrites the metadata for percentage gates", %{name: name} do
+      first_gate = %Gate{type: :percentage_of_time, for: 0.5, enabled: true, metadata: %{"who" => "adam"}}
+      {:ok, %Flag{gates: [first_persisted]}} = PersiEcto.put(name, first_gate)
+      assert first_persisted.metadata == %{"who" => "adam"}
+
+      second_gate = %Gate{type: :percentage_of_time, for: 0.42, enabled: true, metadata: %{"who" => "bob"}}
+      {:ok, %Flag{gates: [second_persisted]}} = PersiEcto.put(name, second_gate)
+      assert second_persisted.metadata == %{"who" => "bob"}
+    end
+
+
+    test "put() preserves existing metadata when a percentage update carries none", %{name: name} do
+      with_metadata = %Gate{type: :percentage_of_time, for: 0.5, enabled: true, metadata: %{"who" => "adam"}}
+      {:ok, %Flag{gates: [persisted]}} = PersiEcto.put(name, with_metadata)
+      assert persisted.metadata == %{"who" => "adam"}
+
+      # A metadata-less update of the same percentage gate must not clear it.
+      without_metadata = %Gate{type: :percentage_of_time, for: 0.42, enabled: true}
+      {:ok, %Flag{gates: [updated]}} = PersiEcto.put(name, without_metadata)
+      assert updated.metadata == %{"who" => "adam"}
     end
   end
 

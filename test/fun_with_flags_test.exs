@@ -228,6 +228,33 @@ defmodule FunWithFlagsTest do
     end
 
 
+    test "passing :metadata does not change the enable/disable behaviour", %{scrooge: scrooge, flag_name: flag_name} do
+      assert {:ok, true} = FunWithFlags.enable(flag_name, metadata: %{"who" => "adam"})
+      assert FunWithFlags.enabled?(flag_name)
+
+      assert {:ok, false} = FunWithFlags.disable(flag_name, for_actor: scrooge, metadata: %{"who" => "bob"})
+      assert FunWithFlags.enabled?(flag_name)
+      refute FunWithFlags.enabled?(flag_name, for: scrooge)
+    end
+
+
+    if FunWithFlags.Config.persist_in_ecto? do
+      test "the :metadata option is stored on the gate and read back (Ecto)", %{scrooge: scrooge, flag_name: flag_name} do
+        FunWithFlags.enable(flag_name, for_actor: scrooge, metadata: %{"who" => "adam", "reason" => "launch"})
+
+        flag = FunWithFlags.get_flag(flag_name)
+        actor_gate = Enum.find(flag.gates, &(&1.type == :actor))
+        assert actor_gate.metadata == %{"who" => "adam", "reason" => "launch"}
+
+        # An update with fresh metadata overwrites the old.
+        FunWithFlags.disable(flag_name, for_actor: scrooge, metadata: %{"who" => "bob"})
+        flag = FunWithFlags.get_flag(flag_name)
+        actor_gate = Enum.find(flag.gates, &(&1.type == :actor))
+        assert actor_gate.metadata == %{"who" => "bob"}
+      end
+    end
+
+
     test "flags can be enabled for specific actors", %{scrooge: scrooge, donald: donald, flag_name: flag_name} do
       refute FunWithFlags.enabled?(flag_name)
       refute FunWithFlags.enabled?(flag_name, for: scrooge)

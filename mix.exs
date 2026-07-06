@@ -51,7 +51,8 @@ defmodule FunWithFlags.Mixfile do
 
     apps =
       if System.get_env("PERSISTENCE") == "ecto" do
-        apps ++ [:ecto, :ecto_sql, :postgrex]
+        # :jason is needed by ecto_sqlite3 to encode/decode :map (JSON) columns.
+        apps ++ [:ecto, :ecto_sql, :postgrex, :jason]
       else
         apps
       end
@@ -73,6 +74,8 @@ defmodule FunWithFlags.Mixfile do
       {:ecto_sqlite3, "~> 0.8", optional: true, only: [:dev, :test]},
       {:postgrex, "~> 0.16", optional: true, only: [:dev, :test]},
       {:myxql, "~> 0.2", optional: true, only: [:dev, :test]},
+      # Needed by ecto_sqlite3 to encode/decode :map (JSON) columns in dev/test.
+      {:jason, "~> 1.0", only: [:dev, :test]},
       {:phoenix_pubsub, "~> 2.0", optional: true},
       {:telemetry, "~> 1.3"},
 

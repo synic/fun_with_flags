@@ -13,15 +13,17 @@ defmodule FunWithFlags.Store.Persistent.Ecto.Record do
     field :gate_type, :string
     field :target, :string
     field :enabled, :boolean
+    field :metadata, :map
     timestamps(type: :utc_datetime)
   end
 
-  @fields [:flag_name, :gate_type, :target, :enabled]
+  @required_fields [:flag_name, :gate_type, :target, :enabled]
+  @optional_fields [:metadata]
 
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, @fields)
-    |> validate_required(@fields)
+    |> cast(params, @required_fields ++ @optional_fields)
+    |> validate_required(@required_fields)
     |> unique_constraint(
         :gate_type,
         name: "fwf_flag_name_gate_target_idx",
@@ -37,7 +39,8 @@ defmodule FunWithFlags.Store.Persistent.Ecto.Record do
       flag_name: to_string(flag_name),
       gate_type: type,
       target: target,
-      enabled: gate.enabled
+      enabled: gate.enabled,
+      metadata: gate.metadata
     }
     changeset(%__MODULE__{}, data)
   end
@@ -45,7 +48,12 @@ defmodule FunWithFlags.Store.Persistent.Ecto.Record do
 
   def update_target(record = %__MODULE__{gate_type: "percentage"}, gate) do
     {"percentage", target} = get_type_and_target(gate)
-    change(record, target: target)
+    # Only overwrite `metadata` when the incoming gate carries some, so a
+    # metadata-less update preserves existing metadata (matching the upsert
+    # path in Ecto.upsert_options/2 for the other gate types).
+    changes = [target: target]
+    changes = if gate.metadata, do: changes ++ [metadata: gate.metadata], else: changes
+    change(record, changes)
   end
 
   # Do not just store NULL for `target: nil`, because the unique

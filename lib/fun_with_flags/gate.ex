@@ -16,12 +16,13 @@ defmodule FunWithFlags.Gate do
     defexception [:message]
   end
 
-  defstruct [:type, :for, :enabled, inserted_at: nil, updated_at: nil]
+  defstruct [:type, :for, :enabled, :metadata, inserted_at: nil, updated_at: nil]
 
   @type t :: %FunWithFlags.Gate{
           type: atom,
           for: nil | String.t(),
           enabled: boolean,
+          metadata: map() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -65,6 +66,17 @@ defmodule FunWithFlags.Gate do
   def new(:group, group_name, enabled) when is_boolean(enabled) do
     validate_group_name(group_name)
     %__MODULE__{type: :group, for: to_string(group_name), enabled: enabled}
+  end
+
+
+  # Attaches optional caller-supplied metadata (e.g. who made the change) to a
+  # gate before it's persisted. A nil metadata is left as nil rather than an
+  # empty map, so metadata-less writes don't clutter storage.
+  @doc false
+  @spec with_metadata(t, map() | nil) :: t
+  def with_metadata(%__MODULE__{} = gate, nil), do: gate
+  def with_metadata(%__MODULE__{} = gate, metadata) when is_map(metadata) do
+    %{gate | metadata: metadata}
   end
 
 

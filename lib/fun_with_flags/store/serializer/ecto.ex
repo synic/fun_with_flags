@@ -27,23 +27,23 @@ defmodule FunWithFlags.Store.Serializer.Ecto do
 
 
   defp do_deserialize_gate(%Record{gate_type: "boolean", enabled: enabled} = record) do
-    %Gate{type: :boolean, for: nil, enabled: enabled, inserted_at: record.inserted_at, updated_at: record.updated_at}
+    %Gate{type: :boolean, for: nil, enabled: enabled, metadata: record.metadata, inserted_at: record.inserted_at, updated_at: record.updated_at}
   end
 
   defp do_deserialize_gate(%Record{gate_type: "actor", enabled: enabled, target: target} = record) do
-    %Gate{type: :actor, for: target, enabled: enabled, inserted_at: record.inserted_at, updated_at: record.updated_at}
+    %Gate{type: :actor, for: target, enabled: enabled, metadata: record.metadata, inserted_at: record.inserted_at, updated_at: record.updated_at}
   end
 
   defp do_deserialize_gate(%Record{gate_type: "group", enabled: enabled, target: target} = record) do
-    %Gate{type: :group, for: target, enabled: enabled, inserted_at: record.inserted_at, updated_at: record.updated_at}
+    %Gate{type: :group, for: target, enabled: enabled, metadata: record.metadata, inserted_at: record.inserted_at, updated_at: record.updated_at}
   end
 
   defp do_deserialize_gate(%Record{gate_type: "percentage", target: "time/" <> ratio_s} = record) do
-    %Gate{type: :percentage_of_time, for: parse_float(ratio_s), enabled: true, inserted_at: record.inserted_at, updated_at: record.updated_at}
+    %Gate{type: :percentage_of_time, for: parse_float(ratio_s), enabled: true, metadata: record.metadata, inserted_at: record.inserted_at, updated_at: record.updated_at}
   end
 
   defp do_deserialize_gate(%Record{gate_type: "percentage", target: "actors/" <> ratio_s} = record) do
-    %Gate{type: :percentage_of_actors, for: parse_float(ratio_s), enabled: true, inserted_at: record.inserted_at, updated_at: record.updated_at}
+    %Gate{type: :percentage_of_actors, for: parse_float(ratio_s), enabled: true, metadata: record.metadata, inserted_at: record.inserted_at, updated_at: record.updated_at}
   end
 
   def to_atom(atm) when is_atom(atm), do: atm

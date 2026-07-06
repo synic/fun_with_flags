@@ -282,7 +282,12 @@ defmodule FunWithFlags.Store.Persistent.Ecto do
   # MySQL/SQLite3 UPSERTs don't need it.
   #
   defp upsert_options(repo, gate = %Gate{}) do
-    options = [on_conflict: [set: [enabled: gate.enabled, updated_at: DateTime.utc_now()]]]
+    # Only overwrite `metadata` on conflict when the incoming gate carries some,
+    # both to avoid clobbering existing metadata with a metadata-less write and
+    # because a literal `nil` can't be cast to the `:map` type in the update query.
+    set = [enabled: gate.enabled, updated_at: DateTime.utc_now()]
+    set = if gate.metadata, do: set ++ [metadata: gate.metadata], else: set
+    options = [on_conflict: [set: set]]
 
     case db_type(repo) do
       :postgres ->

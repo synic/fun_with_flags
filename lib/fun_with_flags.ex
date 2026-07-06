@@ -102,6 +102,11 @@ defmodule FunWithFlags do
   * `:for_percentage_of` - used to enable the flag for a percentage
   of time or actors, expressed as `{:time, float}` or `{:actors, float}`,
   where float is in the range `0.0 < x < 1.0`.
+  * `:metadata` - a JSON-compatible map stored alongside the gate, recording who
+  made the change and any other context. It is serialized as JSON, so keys are
+  returned as strings on read (prefer string keys, e.g.
+  `%{"who" => "adam", "reason" => "launch"}`), and values must be JSON-encodable.
+  Only persisted by the Ecto adapter; the Redis adapter ignores it.
 
   ## Examples
 
@@ -175,22 +180,25 @@ defmodule FunWithFlags do
 
   """
   @spec enable(atom, options) :: {:ok, true} | {:error, any}
-  def enable(flag_name, options \\ [])
+  def enable(flag_name, options \\ []) when is_list(options) do
+    {metadata, options} = Keyword.pop(options, :metadata)
+    do_enable(flag_name, options, metadata)
+  end
 
-  def enable(flag_name, []) when is_atom(flag_name) do
-    gate = Gate.new(:boolean, true)
+  defp do_enable(flag_name, [], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:boolean, true) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, flag} -> verify(flag)
       error -> error
     end
   end
 
-  def enable(flag_name, [for_actor: nil]) do
-    enable(flag_name)
+  defp do_enable(flag_name, [for_actor: nil], metadata) do
+    do_enable(flag_name, [], metadata)
   end
 
-  def enable(flag_name, [for_actor: actor]) when is_atom(flag_name) do
-    gate = Gate.new(:actor, actor, true)
+  defp do_enable(flag_name, [for_actor: actor], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:actor, actor, true) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, flag} -> verify(flag, for: actor)
       error -> error
@@ -198,12 +206,12 @@ defmodule FunWithFlags do
   end
 
 
-  def enable(flag_name, [for_group: nil]) do
-    enable(flag_name)
+  defp do_enable(flag_name, [for_group: nil], metadata) do
+    do_enable(flag_name, [], metadata)
   end
 
-  def enable(flag_name, [for_group: group_name]) when is_atom(flag_name) do
-    gate = Gate.new(:group, group_name, true)
+  defp do_enable(flag_name, [for_group: group_name], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:group, group_name, true) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, _flag} -> {:ok, true}
       error -> error
@@ -211,16 +219,16 @@ defmodule FunWithFlags do
   end
 
 
-  def enable(flag_name, [for_percentage_of: {:time, ratio}]) when is_atom(flag_name) do
-    gate = Gate.new(:percentage_of_time, ratio)
+  defp do_enable(flag_name, [for_percentage_of: {:time, ratio}], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:percentage_of_time, ratio) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, _flag} -> {:ok, true}
       error -> error
     end
   end
 
-  def enable(flag_name, [for_percentage_of: {:actors, ratio}]) when is_atom(flag_name) do
-    gate = Gate.new(:percentage_of_actors, ratio)
+  defp do_enable(flag_name, [for_percentage_of: {:actors, ratio}], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:percentage_of_actors, ratio) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, _flag} -> {:ok, true}
       error -> error
@@ -242,6 +250,11 @@ defmodule FunWithFlags do
   * `:for_percentage_of` - used to disable the flag for a percentage
   of time or actors, expressed as `{:time, float}` or `{:actors, float}`,
   where float is in the range `0.0 < x < 1.0`.
+  * `:metadata` - a JSON-compatible map stored alongside the gate, recording who
+  made the change and any other context. It is serialized as JSON, so keys are
+  returned as strings on read (prefer string keys, e.g.
+  `%{"who" => "adam", "reason" => "launch"}`), and values must be JSON-encodable.
+  Only persisted by the Ecto adapter; the Redis adapter ignores it.
 
   ## Examples
 
@@ -307,34 +320,37 @@ defmodule FunWithFlags do
 
   """
   @spec disable(atom, options) :: {:ok, boolean()} | {:error, any}
-  def disable(flag_name, options \\ [])
+  def disable(flag_name, options \\ []) when is_list(options) do
+    {metadata, options} = Keyword.pop(options, :metadata)
+    do_disable(flag_name, options, metadata)
+  end
 
-  def disable(flag_name, []) when is_atom(flag_name) do
-    gate = Gate.new(:boolean, false)
+  defp do_disable(flag_name, [], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:boolean, false) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, flag} -> verify(flag)
       error -> error
     end
   end
 
-  def disable(flag_name, [for_actor: nil]) do
-    disable(flag_name)
+  defp do_disable(flag_name, [for_actor: nil], metadata) do
+    do_disable(flag_name, [], metadata)
   end
 
-  def disable(flag_name, [for_actor: actor]) when is_atom(flag_name) do
-    gate = Gate.new(:actor, actor, false)
+  defp do_disable(flag_name, [for_actor: actor], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:actor, actor, false) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, flag} -> verify(flag, for: actor)
       error -> error
     end
   end
 
-  def disable(flag_name, [for_group: nil]) do
-    disable(flag_name)
+  defp do_disable(flag_name, [for_group: nil], metadata) do
+    do_disable(flag_name, [], metadata)
   end
 
-  def disable(flag_name, [for_group: group_name]) when is_atom(flag_name) do
-    gate = Gate.new(:group, group_name, false)
+  defp do_disable(flag_name, [for_group: group_name], metadata) when is_atom(flag_name) do
+    gate = Gate.new(:group, group_name, false) |> Gate.with_metadata(metadata)
     case @store.put(flag_name, gate) do
       {:ok, _flag} -> {:ok, false}
       error -> error
@@ -342,10 +358,10 @@ defmodule FunWithFlags do
   end
 
 
-  def disable(flag_name, [for_percentage_of: {type, ratio}])
+  defp do_disable(flag_name, [for_percentage_of: {type, ratio}], metadata)
   when is_atom(flag_name) and is_float(ratio) do
     inverted_ratio = 1.0 - ratio
-    case enable(flag_name, [for_percentage_of: {type, inverted_ratio}]) do
+    case do_enable(flag_name, [for_percentage_of: {type, inverted_ratio}], metadata) do
       {:ok, true} -> {:ok, false}
       error -> error
     end
